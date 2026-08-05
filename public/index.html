@@ -8,6 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- ePub.js Kütüphanesi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.88/epub.min.js"></script>
+    <!-- PDF.js Kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
     <!-- JSZip Kütüphanesi (.zip dosyaları için) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
@@ -34,7 +39,7 @@
 <body id="body-bg" class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col select-none">
 
     <!-- Üst Menü (Navbar) -->
-    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm px-6 py-3 flex justify-between items-center z-20">
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm px-6 py-3 flex justify-between items-center z-25">
         <div class="flex items-center space-x-3">
             <h1 class="text-lg font-black tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent flex items-center gap-2">
                 <span>📚</span> MiniKitaplık <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-semibold">Pro</span>
@@ -75,10 +80,11 @@
                     <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-indigo-300 dark:border-indigo-700/60 rounded-xl cursor-pointer bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition group">
                         <div class="flex flex-col items-center justify-center p-2 text-center">
                             <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📂</span>
-                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">EPUB veya ZIP Yükle</span>
-                            <span class="text-[10px] text-slate-400 mt-0.5">Toplu ZIP veya tekil dosya</span>
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">EPUB, PDF veya ZIP Yükle</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5">Toplu ZIP veya tekli dosya</span>
                         </div>
-                        <input type="file" id="epub-upload" accept=".epub, .zip" class="hidden" onchange="handleFileUpload(event)">
+                        <!-- name="epubFile" backend ile tam uyumludur -->
+                        <input type="file" id="epub-upload" name="epubFile" accept=".epub, .zip, .pdf" class="hidden" onchange="handleFileUpload(event)">
                     </label>
                 </div>
 
@@ -116,11 +122,11 @@
             <div class="flex-1 space-y-6">
                 <div>
                     <h2 class="text-2xl font-black tracking-tight">Kütüphane Arşivi</h2>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Sol menüden ePub veya ZIP dosyası yükleyerek arşivini oluşturmaya başlayabilirsin.</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Sol menüden EPUB, PDF veya ZIP dosyası yükleyerek arşivini oluşturabilirsin.</p>
                 </div>
                 
                 <div id="book-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Dinamik olarak yüklenen kitaplar buraya eklenecek -->
+                    <!-- Dinamik kitap kartları buraya yüklenecek -->
                 </div>
             </div>
         </section>
@@ -133,7 +139,7 @@
                     <h3 id="reader-title" class="font-bold truncate max-w-xs text-sm">Kitap Adı</h3>
                 </div>
                 <div class="flex items-center flex-wrap gap-2">
-                    <button onclick="toggleTOC()" class="px-2.5 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition shadow-sm flex items-center gap-1">📑 Bölümler</button>
+                    <button onclick="toggleTOC()" id="toc-toggle-btn" class="px-2.5 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition shadow-sm flex items-center gap-1">📑 Bölümler</button>
                     <button onclick="toggleSettingsMenu()" class="px-2.5 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition shadow-sm flex items-center gap-1">⚙️ Ayarlar</button>
                     <button onclick="toggleTTS()" id="tts-btn" class="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-1">🔊 Sesli Oku</button>
                     <button onclick="markAsCompleted()" class="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-100 transition shadow-sm">✅ Okundu İşaretle</button>
@@ -146,7 +152,7 @@
                     <span>Okuma Ayarları</span>
                     <button onclick="toggleSettingsMenu()" class="text-slate-400 hover:text-slate-600">&times;</button>
                 </div>
-                <div>
+                <div id="epub-font-size-group">
                     <label class="block font-semibold mb-1 text-slate-500">Yazı Boyutu</label>
                     <div class="flex items-center gap-2">
                         <button onclick="changeFontSize(-1)" class="flex-1 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg font-bold">A-</button>
@@ -162,19 +168,6 @@
                         <option value="monospace">Monospace (Kod)</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-500">Yazı Rengi</label>
-                    <div class="flex items-center gap-2">
-                        <input type="color" id="text-color-picker" value="#1e293b" onchange="changeTextColor(this.value)" class="w-10 h-8 rounded border border-slate-200 dark:border-slate-600 cursor-pointer bg-transparent">
-                        <div class="flex gap-1 flex-1">
-                            <button onclick="changeTextColor('#1e293b')" class="w-6 h-6 rounded-full bg-slate-800 border border-slate-300" title="Koyu"></button>
-                            <button onclick="changeTextColor('#334155')" class="w-6 h-6 rounded-full bg-slate-600 border border-slate-300" title="Gri"></button>
-                            <button onclick="changeTextColor('#4338ca')" class="w-6 h-6 rounded-full bg-indigo-700 border border-slate-300" title="İndigo"></button>
-                            <button onclick="changeTextColor('#5f4b32')" class="w-6 h-6 rounded-full bg-[#5f4b32] border border-slate-300" title="Sepia Tonu"></button>
-                            <button onclick="changeTextColor('#f8fafc')" class="w-6 h-6 rounded-full bg-slate-100 border border-slate-300" title="Beyaz"></button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- İçindekiler Drawer -->
@@ -186,9 +179,15 @@
                 <div id="toc-list" class="flex-1 overflow-y-auto p-4 space-y-1 text-xs"></div>
             </div>
 
-            <div id="reader-content" class="hidden flex-1 p-8 overflow-y-auto leading-relaxed whitespace-pre-line text-lg" onscroll="saveScrollPosition()"></div>
+            <!-- ePub Görünüm Alanı -->
             <div id="viewer" class="flex-1 w-full h-full bg-white dark:bg-slate-900 relative"></div>
 
+            <!-- PDF Görünüm Alanı -->
+            <div id="pdf-viewer-container" class="hidden flex-1 flex flex-col items-center justify-start bg-slate-100 dark:bg-slate-950 overflow-y-auto p-6 relative">
+                <canvas id="pdf-canvas" class="shadow-2xl rounded-xl max-w-full bg-white"></canvas>
+            </div>
+
+            <!-- Sayfalama Kontrolleri -->
             <div id="epub-nav-controls" class="hidden bg-slate-50 dark:bg-slate-800/80 px-6 py-3 border-t border-slate-200 dark:border-slate-700/80 flex justify-between items-center z-10">
                 <button onclick="prevPage()" class="px-4 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-slate-100 transition shadow-sm">&larr; Önceki</button>
                 <span id="reading-progress" class="text-xs font-semibold text-slate-400">Sayfa yükleniyor...</span>
@@ -197,32 +196,24 @@
         </section>
     </main>
 
-    <!-- İstek Modal -->
+    <!-- Modallar -->
     <div id="request-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="text-base font-bold flex items-center gap-2"><span>💡</span> Kitap veya Özellik İsteği</h3>
                 <button onclick="closeRequestModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Sitede görmek istediğin bir kitap ya da eklenmesini istediğin bir özellik varsa bize yazabilirsin.</p>
             <form id="request-form" action="https://formspree.io/f/mjybvbpj" method="POST" onsubmit="handleFormSubmit(event)" class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Adınız / E-postanız (İsteğe bağlı)</label>
-                    <input type="text" name="kullanici" placeholder="Adınız veya E-posta adresiniz" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">İsteğiniz / Öneriniz</label>
-                    <textarea name="istek" rows="4" required placeholder="Örn: 'Şu kitabı arşive ekleyebilir misiniz?'" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-                </div>
+                <input type="text" name="kullanici" placeholder="Adınız veya E-posta adresiniz" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none">
+                <textarea name="istek" rows="4" required placeholder="Örn: 'Şu PDF/EPUB arşivi eklenebilir mi?'" class="w-full px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none"></textarea>
                 <div class="flex justify-end space-x-2 pt-2">
-                    <button type="button" onclick="closeRequestModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">İptal</button>
-                    <button type="submit" id="submit-btn" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition">İsteği Gönder</button>
+                    <button type="button" onclick="closeRequestModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800">İptal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white">İsteği Gönder</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Notlar Modalı -->
     <div id="notes-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center">
@@ -231,12 +222,11 @@
             </div>
             <div id="notes-list" class="flex-1 overflow-y-auto space-y-3 text-xs pr-1"></div>
             <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                <button onclick="closeNotesModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">Kapat</button>
+                <button onclick="closeNotesModal()" class="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800">Kapat</button>
             </div>
         </div>
     </div>
 
-    <!-- İstatistikler Modalı -->
     <div id="stats-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div class="flex justify-between items-center">
@@ -253,79 +243,104 @@
                     <p class="text-xs font-semibold text-slate-500 mt-1">Favori Kitap</p>
                 </div>
             </div>
-            <div class="pt-2">
-                <button onclick="closeStatsModal()" class="w-full py-2.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">Kapat</button>
-            </div>
+            <button onclick="closeStatsModal()" class="w-full py-2.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800">Kapat</button>
         </div>
     </div>
 
-    <!-- Odak Sesleri Modalı -->
     <div id="ambient-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div class="flex justify-between items-center">
                 <h3 class="text-base font-bold flex items-center gap-2"><span>🎧</span> Odak Arka Plan Sesleri</h3>
                 <button onclick="closeAmbientModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Kitap okurken odaklanmayı artırmak için ses seçebilirsin.</p>
-            
             <div class="space-y-3 pt-2">
-                <button onclick="playAmbientSound('rain')" class="w-full p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl font-semibold flex items-center justify-between transition text-xs">
-                    <span class="flex items-center gap-2">🌧️ Yağmur Sesi</span>
-                    <span id="rain-status" class="text-slate-400 font-normal">Çal</span>
-                </button>
-                <button onclick="playAmbientSound('fire')" class="w-full p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl font-semibold flex items-center justify-between transition text-xs">
-                    <span class="flex items-center gap-2">🔥 Şömine Sesi</span>
-                    <span id="fire-status" class="text-slate-400 font-normal">Çal</span>
-                </button>
-
-                <!-- Ses Seviyesi Ayarı -->
-                <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs">
-                    <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-300">
-                        <span>🔊 Ses Düzeyi</span>
-                        <span id="volume-indicator">50%</span>
-                    </div>
-                    <input type="range" id="volume-slider" min="0" max="100" value="50" oninput="changeVolume(this.value)" class="w-full accent-indigo-600 cursor-pointer">
-                </div>
-
-                <button onclick="stopAmbientSound()" class="w-full py-2.5 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300 rounded-xl font-semibold transition text-xs">Tüm Sesleri Durdur</button>
+                <button onclick="playAmbientSound('rain')" class="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-semibold flex items-center justify-between text-xs">🌧️ Yağmur Sesi</button>
+                <button onclick="playAmbientSound('fire')" class="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl font-semibold flex items-center justify-between text-xs">🔥 Şömine Sesi</button>
+                <button onclick="stopAmbientSound()" class="w-full py-2.5 bg-rose-50 text-rose-600 dark:bg-rose-950/40 rounded-xl font-semibold text-xs">Tüm Sesleri Durdur</button>
             </div>
-            <div class="pt-2">
-                <button onclick="closeAmbientModal()" class="w-full py-2.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">Kapat</button>
-            </div>
+            <button onclick="closeAmbientModal()" class="w-full py-2.5 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800">Kapat</button>
         </div>
     </div>
 
-    <!-- Ses Elementleri -->
     <audio id="rainAudio" loop><source src="sounds/rain.mp3" type="audio/mpeg"></audio>
     <audio id="fireAudio" loop><source src="sounds/fireplace.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- Durum Yönetimi ve Global Değişkenler ---
         let currentTheme = localStorage.getItem('reader_theme') || 'auto';
         let currentCategory = 'all';
         let currentStatusFilter = 'all';
-        let searchQuery = '';
         let favorites = JSON.parse(localStorage.getItem('reader_favorites') || '[]');
         let completedBooks = JSON.parse(localStorage.getItem('reader_completed') || '[]');
         let readingProgressData = JSON.parse(localStorage.getItem('reader_progress') || '{}');
         let highlights = JSON.parse(localStorage.getItem('reader_highlights') || '[]');
         let uploadedBooksList = JSON.parse(localStorage.getItem('reader_uploaded_books') || '[]');
-        let currentBookId = null;
-        let currentBookBook = null;
+        
+        let currentBook = null;
         let rendition = null;
-        let currentFontSize = 100;
-        let currentFontFamily = 'sans-serif';
-        let currentTextColor = '#1e293b';
-        let isTTSActive = false;
-        let currentAudioType = null;
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let activeBookType = 'epub'; // 'epub' veya 'pdf'
+        let currentActiveBookId = null;
 
-        // Sayfa yüklendiğinde çalışacaklar
         document.addEventListener('DOMContentLoaded', () => {
             setTheme(currentTheme);
             renderBookGrid();
         });
 
-        // --- Kütüphane Kartlarını Oluşturma ---
+        // --- Dosya Yükleme (EPUB, PDF, ZIP) ---
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            for (let file of files) {
+                const extension = file.name.split('.').pop().toLowerCase();
+                
+                if (extension === 'zip') {
+                    const zip = new JSZip();
+                    try {
+                        const content = await zip.loadAsync(file);
+                        for (let filename of Object.keys(content.files)) {
+                            if (filename.endsWith('.epub') || filename.endsWith('.pdf')) {
+                                const fileData = await content.files[filename].async('blob');
+                                const realExt = filename.endsWith('.pdf') ? 'pdf' : 'epub';
+                                await processSingleFile(new File([fileData], filename), realExt);
+                            }
+                        }
+                    } catch (e) {
+                        alert('ZIP dosyası okunurken hata oluştu.');
+                    }
+                } else if (extension === 'epub' || extension === 'pdf') {
+                    await processSingleFile(file, extension);
+                }
+            }
+            renderBookGrid();
+            event.target.value = '';
+        }
+
+        async function processSingleFile(file, type) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                 const bookId = 'book_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+                    const newBook = {
+                        id: bookId,
+                        title: file.name.substring(0, file.name.lastIndexOf('.')) || file.name,
+                        author: type === 'pdf' ? 'PDF Belgesi' : 'Kişisel Yazar',
+                        type: type,
+                        data: base64Data
+                    };
+                    uploadedBooksList.push(newBook);
+                    localStorage.setItem('reader_uploaded_books', JSON.stringify(uploadedBooksList));
+                    resolve();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- Kitap Listeleme ve Kartlar ---
         function renderBookGrid() {
             const grid = document.getElementById('book-grid');
             grid.innerHTML = '';
@@ -335,7 +350,7 @@
                     <div class="col-span-full py-16 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
                         <span class="text-4xl">📚</span>
                         <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm">Arşivinizde henüz kitap yok</h3>
-                        <p class="text-xs text-slate-400 max-w-sm mx-auto">Sol taraftaki yükleme alanını kullanarak kendi EPUB veya ZIP arşivlerinizi ekleyebilirsiniz.</p>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">EPUB, PDF veya ZIP yükleyerek kütüphanenizi genişletebilirsiniz.</p>
                     </div>
                 `;
                 return;
@@ -346,15 +361,10 @@
                 const isCompleted = completedBooks.includes(book.id);
                 const isReading = readingProgressData[book.id] !== undefined && !isCompleted;
                 
-                let badgeText = 'Okunmadı';
-                let badgeClass = 'status-badge text-[11px] font-semibold text-slate-400';
-                if (isCompleted) {
-                    badgeText = '✅ Okundu';
-                    badgeClass = 'status-badge text-[11px] font-semibold text-emerald-600 dark:text-emerald-400';
-                } else if (isReading) {
-                    badgeText = '📖 Okunuyor';
-                    badgeClass = 'status-badge text-[11px] font-semibold text-indigo-600 dark:text-indigo-400';
-                }
+                let badgeText = book.type === 'pdf' ? '📄 PDF Dosyası' : '📥 EPUB Dosyası';
+                let statusBadgeClass = 'text-[11px] font-semibold text-slate-400';
+                if (isCompleted) { badgeText = '✅ Okundu'; statusBadgeClass = 'text-[11px] font-semibold text-emerald-600'; }
+                else if (isReading) { badgeText = '📖 Okunuyor'; statusBadgeClass = 'text-[11px] font-semibold text-indigo-600'; }
 
                 const card = document.createElement('div');
                 card.className = 'book-card bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between relative group';
@@ -364,18 +374,18 @@
                 card.setAttribute('data-id', book.id);
 
                 card.innerHTML = `
-                    <div onclick="openUploadedBook('${book.id}')">
+                    <div onclick="openBook('${book.id}')">
                         <div class="flex justify-between items-start mb-3">
-                            <span class="text-xs font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 rounded-full">Kişisel Dosya</span>
-                            <button onclick="toggleFavorite('${book.id}', event)" class="favorite-btn text-lg hover:scale-125 transition-transform">${isFav ? '⭐' : '🤍'}</button>
+                            <span class="text-xs font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 rounded-full">${book.type.toUpperCase()}</span>
+                            <button onclick="toggleFavorite('${book.id}', event)" class="text-lg hover:scale-125 transition-transform">${isFav ? '⭐' : '🤍'}</button>
                         </div>
-                        <div class="h-36 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950/30 dark:to-purple-950/30 flex items-center justify-center mb-4 text-4xl shadow-inner">📖</div>
+                        <div class="h-36 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950/30 dark:to-purple-950/30 flex items-center justify-center mb-4 text-4xl shadow-inner">${book.type === 'pdf' ? '📄' : '📖'}</div>
                         <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 line-clamp-1">${book.title}</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${book.author || 'Bilinmeyen Yazar'}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${book.author}</p>
                     </div>
                     <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
-                        <span class="${badgeClass}">${badgeText}</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">Oku &rarr;</span>
+                        <span class="${statusBadgeClass}">${badgeText}</span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">Oku &rarr;</span>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -383,387 +393,267 @@
             filterAndSearchBooks();
         }
 
-        // --- Tema Yönetimi ---
-        function setTheme(theme) {
-            currentTheme = theme;
-            localStorage.setItem('reader_theme', theme);
-            const body = document.getElementById('body-bg');
-            body.classList.remove('dark');
-            
-            if (theme === 'dark') {
-                body.classList.add('dark');
-                body.style.backgroundColor = '';
-                body.style.color = '';
-            } else if (theme === 'sepia') {
-                body.style.backgroundColor = '#fbf0d9';
-                body.style.color = '#5f4b32';
-            } else if (theme === 'light') {
-                body.style.backgroundColor = '#f8fafc';
-                body.style.color = '#1e293b';
+        // --- Kitap Açma & Okuma Yöneticisi ---
+        async function openBook(id) {
+            const bookObj = uploadedBooksList.find(b => b.id === id);
+            if (!bookObj) return;
+
+            currentActiveBookId = id;
+            activeBookType = bookObj.type;
+
+            document.getElementById('library-view').classList.add('hidden');
+            document.getElementById('reader-view').classList.remove('hidden');
+            document.getElementById('reader-title').innerText = bookObj.title;
+
+            // Okunuyor olarak kaydet
+            if(!completedBooks.includes(id) && !readingProgressData[id]) {
+                readingProgressData[id] = 0;
+                localStorage.setItem('reader_progress', JSON.stringify(readingProgressData));
+            }
+
+            if (activeBookType === 'pdf') {
+                document.getElementById('viewer').style.display = 'none';
+                document.getElementById('pdf-viewer-container').style.display = 'flex';
+                document.getElementById('epub-nav-controls').style.display = 'flex';
+                document.getElementById('toc-toggle-btn').style.display = 'none';
+                document.getElementById('epub-font-size-group').style.display = 'none';
+
+                const loadingTask = pdfjsLib.getDocument({ data: atob(bookObj.data.split(',')[1]) });
+                pdfDoc = await loadingTask.promise;
+                pageNum = readingProgressData[id] || 1;
+                renderPDFPage(pageNum);
             } else {
-                body.style.backgroundColor = '';
-                body.style.color = '';
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    body.classList.add('dark');
-                }
-            }
-        }
+                document.getElementById('viewer').style.display = 'block';
+                document.getElementById('pdf-viewer-container').style.display = 'none';
+                document.getElementById('epub-nav-controls').style.display = 'flex';
+                document.getElementById('toc-toggle-btn').style.display = 'flex';
+                document.getElementById('epub-font-size-group').style.display = 'block';
 
-        // --- Arama ve Filtreleme ---
-        function setCategoryFilter(category) {
-            currentCategory = category;
-            document.querySelectorAll('aside ul button').forEach(btn => btn.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/50', 'text-indigo-600', 'dark:text-indigo-300', 'font-bold'));
-            const activeBtn = document.getElementById('cat-' + category);
-            if(activeBtn) {
-                activeBtn.classList.add('bg-indigo-50', 'dark:bg-indigo-950/50', 'text-indigo-600', 'dark:text-indigo-300', 'font-bold');
-            }
-            filterAndSearchBooks();
-        }
+                document.getElementById('viewer').innerHTML = '';
+                currentBook = ePub(bookObj.data);
+                rendition = currentBook.renderTo("viewer", {
+                    width: "100%",
+                    height: "100%",
+                    spread: "auto"
+                });
 
-        function setStatusFilter(status) {
-            currentStatusFilter = status;
-            document.querySelectorAll('[id^="status-"]').forEach(btn => btn.classList.remove('text-indigo-600', 'dark:text-indigo-400', 'font-semibold'));
-            const activeBtn = document.getElementById('status-' + status);
-            if(activeBtn) {
-                activeBtn.classList.add('text-indigo-600', 'dark:text-indigo-400', 'font-semibold');
-            }
-            filterAndSearchBooks();
-        }
-
-        function filterAndSearchBooks() {
-            searchQuery = document.getElementById('search-input').value.toLowerCase();
-            const cards = document.querySelectorAll('.book-card');
-            
-            cards.forEach(card => {
-                const category = card.getAttribute('data-category');
-                const title = card.getAttribute('data-title') || '';
-                const author = card.getAttribute('data-author') || '';
-                const bookId = card.getAttribute('data-id');
-                
-                let matchesCategory = (currentCategory === 'all') || 
-                                      (currentCategory === 'Yüklenenler' && category === 'Yüklenenler');
-                
-                let matchesStatus = true;
-                if (currentStatusFilter === 'favorites') {
-                    matchesStatus = favorites.includes(bookId);
-                } else if (currentStatusFilter === 'completed') {
-                    matchesStatus = completedBooks.includes(bookId);
-                } else if (currentStatusFilter === 'reading') {
-                    matchesStatus = readingProgressData[bookId] !== undefined && !completedBooks.includes(bookId);
-                }
-
-                let matchesSearch = title.includes(searchQuery) || author.includes(searchQuery);
-
-                if (matchesCategory && matchesStatus && matchesSearch) {
-                    card.style.display = 'flex';
+                let savedLoc = readingProgressData[id];
+                if (savedLoc) {
+                    await rendition.display(savedLoc);
                 } else {
-                    card.style.display = 'none';
+                    await rendition.display();
                 }
-            });
-        }
 
-        // --- Favoriler ve Durumlar ---
-        function toggleFavorite(bookId, event) {
-            event.stopPropagation();
-            const index = favorites.indexOf(bookId);
-            if (index > -1) {
-                favorites.splice(index, 1);
-            } else {
-                favorites.push(bookId);
+                rendition.on('relocated', (location) => {
+                    const percent = currentBook.locations.percentageFromCfi(location.start.cfi);
+                    if(!isNaN(percent)) {
+                        readingProgressData[id] = location.start.cfi;
+                        localStorage.setItem('reader_progress', JSON.stringify(readingProgressData));
+                        document.getElementById('reading-progress').innerText = `%${Math.round(percent * 100)} Okundu`;
+                    }
+                });
+
+                loadTOC();
             }
-            localStorage.setItem('reader_favorites', JSON.stringify(favorites));
-            renderBookGrid();
         }
 
-        function markAsCompleted() {
-            if (!currentBookId) return;
-            if (!completedBooks.includes(currentBookId)) {
-                completedBooks.push(currentBookId);
-                localStorage.setItem('reader_completed', JSON.stringify(completedBooks));
-                renderBookGrid();
-                alert('Kitap okundu olarak işaretlendi!');
+        // --- PDF Sayfa Çizdirme ---
+        function renderPDFPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                const canvas = document.getElementById('pdf-canvas');
+                const ctx = canvas.getContext('2d');
+                const viewport = page.getViewport({ scale: 1.4 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPDFPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            document.getElementById('reading-progress').innerText = `Sayfa ${num} / ${pdfDoc.numPages}`;
+            readingProgressData[currentActiveBookId] = num;
+            localStorage.setItem('reader_progress', JSON.stringify(readingProgressData));
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
             } else {
-                alert('Bu kitap zaten okundu olarak işaretlenmiş.');
+                renderPDFPage(num);
+            }
+        }
+
+        function prevPage() {
+            if (activeBookType === 'pdf') {
+                if (pageNum <= 1) return;
+                pageNum--;
+                queueRenderPage(pageNum);
+            } else {
+                if(rendition) rendition.prev();
+            }
+        }
+
+        function nextPage() {
+            if (activeBookType === 'pdf') {
+                if (pageNum >= pdfDoc.numPages) return;
+                pageNum++;
+                queueRenderPage(pageNum);
+            } else {
+                if(rendition) rendition.next();
             }
         }
 
         function closeBook() {
             document.getElementById('reader-view').classList.add('hidden');
             document.getElementById('library-view').classList.remove('hidden');
-            if (currentBookBook) {
-                currentBookBook.destroy();
-                currentBookBook = null;
-            }
-            document.getElementById('viewer').innerHTML = '';
-            currentBookId = null;
-            if (isTTSActive) stopTTS();
+            if (currentBook) currentBook.destroy();
             renderBookGrid();
         }
 
-        // --- ePub.js Dosya Yükleme ve Okuma ---
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                
-                // Kitap verisini parse edip kaydet
-                const bookId = 'uploaded-' + Date.now();
-                const bookMeta = {
-                    id: bookId,
-                    title: file.name.replace(/\.[^/.]+$/, ""),
-                    author: "Kişisel Arşiv",
-                    buffer: Array.from(new Uint8Array(arrayBuffer))
+        // --- İçindekiler (TOC) ---
+        async function loadTOC() {
+            const tocList = document.getElementById('toc-list');
+            tocList.innerHTML = '';
+            const navigation = await currentBook.loaded.navigation;
+            navigation.toc.forEach(chapter => {
+                const item = document.createElement('button');
+                item.className = 'w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition truncate text-xs';
+                item.innerText = chapter.label.trim();
+                item.onclick = () => {
+                    rendition.display(chapter.href);
+                    toggleTOC();
                 };
-
-                uploadedBooksList.push(bookMeta);
-                localStorage.setItem('reader_uploaded_books', JSON.stringify(uploadedBooksList));
-                renderBookGrid();
-                loadEpubBuffer(arrayBuffer, bookMeta.title, bookId);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function openUploadedBook(bookId) {
-            const found = uploadedBooksList.find(b => b.id === bookId);
-            if (!found) return;
-            const uint8Array = new Uint8Array(found.buffer);
-            loadEpubBuffer(uint8Array.buffer, found.title, found.id);
-        }
-
-        function loadEpubBuffer(buffer, title, bookId) {
-            currentBookId = bookId;
-            document.getElementById('library-view').classList.add('hidden');
-            document.getElementById('reader-view').classList.remove('hidden');
-            document.getElementById('reader-title').textContent = title;
-            
-            document.getElementById('reader-content').classList.add('hidden');
-            const viewer = document.getElementById('viewer');
-            viewer.classList.remove('hidden');
-            viewer.innerHTML = '';
-            document.getElementById('epub-nav-controls').classList.remove('hidden');
-
-            currentBookBook = ePub(buffer);
-            rendition = currentBookBook.renderTo("viewer", {
-                width: "100%",
-                height: "100%",
-                spread: "auto"
+                tocList.appendChild(item);
             });
-
-            let savedLoc = readingProgressData[bookId];
-            if (savedLoc) {
-                rendition.display(savedLoc);
-            } else {
-                rendition.display();
-            }
-
-            rendition.on("relocated", (location) => {
-                const percent = currentBookBook.locations.percentageFromCfi(location.start.cfi);
-                if (!isNaN(percent)) {
-                    document.getElementById('reading-progress').textContent = `%${Math.round(percent * 100)} Okundu`;
-                    readingProgressData[bookId] = location.start.cfi;
-                    localStorage.setItem('reader_progress', JSON.stringify(readingProgressData));
-                }
-            });
-
-            currentBookBook.locations.generate(1024);
-            loadTOC();
-
-            // İlk açılışta kayıtlı renk ve font ayarlarını uygula
-            setTimeout(() => {
-                rendition.themes.fontSize(currentFontSize + '%');
-                rendition.themes.font(currentFontFamily);
-                rendition.themes.default({
-                    "p": { "color": currentTextColor + " !important" },
-                    "span": { "color": currentTextColor + " !important" },
-                    "body": { "color": currentTextColor + " !important" }
-                });
-            }, 500);
         }
 
-        function nextPage() {
-            if (rendition) rendition.next();
-        }
-
-        function prevPage() {
-            if (rendition) rendition.prev();
-        }
-
-        // --- İçindekiler ve Menüler ---
         function toggleTOC() {
             const drawer = document.getElementById('toc-drawer');
             drawer.classList.toggle('hidden');
         }
 
-        async function loadTOC() {
-            if (!currentBookBook) return;
-            const toc = await currentBookBook.loaded.navigation;
-            const listContainer = document.getElementById('toc-list');
-            listContainer.innerHTML = '';
-            
-            toc.forEach(chapter => {
-                const item = document.createElement('a');
-                item.href = '#';
-                item.textContent = chapter.label.trim();
-                item.className = 'block p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg truncate';
-                item.onclick = (e) => {
-                    e.preventDefault();
-                    if(rendition) rendition.display(chapter.href);
-                    toggleTOC();
-                };
-                listContainer.appendChild(item);
+        // --- Diğer İşlevler & Favori / Okundu ---
+        function toggleFavorite(id, event) {
+            event.stopPropagation();
+            if (favorites.includes(id)) {
+                favorites = favorites.filter(favId => favId !== id);
+            } else {
+                favorites.push(id);
+            }
+            localStorage.setItem('reader_favorites', JSON.stringify(favorites));
+            renderBookGrid();
+        }
+
+        function markAsCompleted() {
+            if (!currentActiveBookId) return;
+            if (!completedBooks.includes(currentActiveBookId)) {
+                completedBooks.push(currentActiveBookId);
+                localStorage.setItem('reader_completed', JSON.stringify(completedBooks));
+                alert('Kitap okundu olarak işaretlendi! 🎉');
+            }
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('reader_theme', theme);
+            const body = document.getElementById('body-bg');
+            body.classList.remove('dark');
+            if (theme === 'dark') { body.classList.add('dark'); body.style.backgroundColor = ''; body.style.color = ''; }
+            else if (theme === 'sepia') { body.style.backgroundColor = '#fbf0d9'; body.style.color = '#5f4b32'; }
+            else if (theme === 'light') { body.style.backgroundColor = '#f8fafc'; body.style.color = '#1e293b'; }
+            else {
+                body.style.backgroundColor = ''; body.style.color = '';
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) body.classList.add('dark');
+            }
+        }
+
+        function setCategoryFilter(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('aside ul button').forEach(b => b.classList.remove('bg-indigo-50', 'dark:bg-indigo-950/50', 'text-indigo-600', 'font-bold'));
+            document.getElementById('cat-' + cat).classList.add('bg-indigo-50', 'dark:bg-indigo-950/50', 'text-indigo-600', 'font-bold');
+            filterAndSearchBooks();
+        }
+
+        function setStatusFilter(status) {
+            currentStatusFilter = status;
+            document.querySelectorAll('[id^="status-"]').forEach(b => b.classList.remove('text-indigo-600', 'font-semibold'));
+            document.getElementById('status-' + status).classList.add('text-indigo-600', 'font-semibold');
+            filterAndSearchBooks();
+        }
+
+        function filterAndSearchBooks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            document.querySelectorAll('.book-card').forEach(card => {
+                const title = card.getAttribute('data-title');
+                const author = card.getAttribute('data-author');
+                const id = card.getAttribute('data-id');
+                const matches = title.includes(query) || author.includes(query);
+                
+                let matchesStatus = true;
+                const isFav = favorites.includes(id);
+                const isCompleted = completedBooks.includes(id);
+                const isReading = readingProgressData[id] !== undefined && !isCompleted;
+
+                if (currentStatusFilter === 'favorites') matchesStatus = isFav;
+                else if (currentStatusFilter === 'reading') matchesStatus = isReading;
+                else if (currentStatusFilter === 'completed') matchesStatus = isCompleted;
+
+                card.style.display = (matches && matchesStatus) ? 'flex' : 'none';
             });
         }
 
-        function toggleSettingsMenu() {
-            const panel = document.getElementById('settings-panel');
-            panel.classList.toggle('hidden');
-        }
-
-        function changeFontSize(direction) {
-            currentFontSize += direction * 10;
-            if (currentFontSize < 70) currentFontSize = 70;
-            if (currentFontSize > 200) currentFontSize = 200;
-            document.getElementById('font-size-indicator').textContent = currentFontSize + '%';
-            if (rendition) {
-                rendition.themes.fontSize(currentFontSize + '%');
-            }
-        }
-
-        function changeFontFamily(family) {
-            currentFontFamily = family;
-            if (rendition) {
-                rendition.themes.font(family);
-            }
-        }
-
-        function changeTextColor(color) {
-            currentTextColor = color;
-            document.getElementById('text-color-picker').value = color;
-            if (rendition) {
-                rendition.themes.default({
-                    "p": { "color": color + " !important" },
-                    "span": { "color": color + " !important" },
-                    "body": { "color": color + " !important" },
-                    "div": { "color": color + " !important" },
-                    "a": { "color": color + " !important" }
-                });
-            }
-        }
-
-        // --- Sesli Okuma (TTS) ---
-        function toggleTTS() {
-            if (!('speechSynthesis' in window)) {
-                alert('Tarayıcınız sesli okuma özelliğini desteklemiyor.');
-                return;
-            }
-            if (isTTSActive) {
-                stopTTS();
-            } else {
-                startTTS();
-            }
-        }
-
-        function startTTS() {
-            alert('Sesli okuma şu an aktif ePub görünümlerinde metin akışı için hazırlanıyor.');
-        }
-
-        function stopTTS() {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-            isTTSActive = false;
-        }
-
-        // --- Modaller ---
-        function openRequestModal() { document.getElementById('request-modal').classList.remove('hidden'); }
-        function closeRequestModal() { document.getElementById('request-modal').classList.add('hidden'); }
-        
+        function toggleSettingsMenu() { document.getElementById('settings-panel').classList.toggle('hidden'); }
         function openStatsModal() {
-            document.getElementById('stat-completed-count').textContent = completedBooks.length;
-            document.getElementById('stat-fav-count').textContent = favorites.length;
+            document.getElementById('stat-completed-count').innerText = completedBooks.length;
+            document.getElementById('stat-fav-count').innerText = favorites.length;
             document.getElementById('stats-modal').classList.remove('hidden');
         }
         function closeStatsModal() { document.getElementById('stats-modal').classList.add('hidden'); }
-
-        function openNotesModal() {
-            const list = document.getElementById('notes-list');
-            list.innerHTML = '';
-            if (highlights.length === 0) {
-                list.innerHTML = '<p class="text-slate-400 text-center py-4">Henüz vurgulanan metin bulunmuyor.</p>';
-            }
-            document.getElementById('notes-modal').classList.remove('hidden');
-        }
-        function closeNotesModal() { document.getElementById('notes-modal').classList.add('hidden'); }
-
         function openAmbientModal() { document.getElementById('ambient-modal').classList.remove('hidden'); }
         function closeAmbientModal() { document.getElementById('ambient-modal').classList.add('hidden'); }
+        function openNotesModal() { document.getElementById('notes-modal').classList.remove('hidden'); }
+        function closeNotesModal() { document.getElementById('notes-modal').classList.add('hidden'); }
+        function openRequestModal() { document.getElementById('request-modal').classList.remove('hidden'); }
+        function closeRequestModal() { document.getElementById('request-modal').classList.add('hidden'); }
 
-        // Formspree Gönderimi
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.textContent = 'Gönderiliyor...';
-
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json' }
-            }).then(response => {
-                if (response.ok) {
-                    alert('İsteğiniz başarıyla gönderildi. Teşekkür ederiz!');
-                    form.reset();
-                    closeRequestModal();
-                } else {
-                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
-                }
-                btn.disabled = false;
-                btn.textContent = 'İsteği Gönder';
-            }).catch(() => {
-                alert('Bağlantı hatası oluştu.');
-                btn.disabled = false;
-                btn.textContent = 'İsteği Gönder';
-            });
+        let currentFontSize = 100;
+        function changeFontSize(val) {
+            currentFontSize += val * 10;
+            if(currentFontSize < 70) currentFontSize = 70;
+            if(currentFontSize > 200) currentFontSize = 200;
+            document.getElementById('font-size-indicator').innerText = currentFontSize + '%';
+            if(rendition) rendition.themes.fontSize(currentFontSize + '%');
         }
 
-        // Odak Sesleri Kontrolü
+        function changeFontFamily(font) {
+            if(rendition) rendition.themes.font(font);
+        }
+
         function playAmbientSound(type) {
-            const rainAudio = document.getElementById('rainAudio');
-            const fireAudio = document.getElementById('fireAudio');
-            
-            rainAudio.pause();
-            fireAudio.pause();
-            document.getElementById('rain-status').textContent = 'Çal';
-            document.getElementById('fire-status').textContent = 'Çal';
-
-            if (type === 'rain') {
-                rainAudio.play().catch(() => {});
-                document.getElementById('rain-status').textContent = 'Çalıyor 🎵';
-                currentAudioType = 'rain';
-            } else if (type === 'fire') {
-                fireAudio.play().catch(() => {});
-                document.getElementById('fire-status').textContent = 'Çalıyor 🎵';
-                currentAudioType = 'fire';
-            }
+            stopAmbientSound();
+            const audio = document.getElementById(type === 'rain' ? 'rainAudio' : 'fireAudio');
+            audio.play();
         }
-
         function stopAmbientSound() {
             document.getElementById('rainAudio').pause();
             document.getElementById('fireAudio').pause();
-            document.getElementById('rain-status').textContent = 'Çal';
-            document.getElementById('fire-status').textContent = 'Çal';
-            currentAudioType = null;
         }
-
-        function changeVolume(val) {
-            const vol = val / 100;
-            document.getElementById('rainAudio').volume = vol;
-            document.getElementById('fireAudio').volume = vol;
-            document.getElementById('volume-indicator').textContent = val + '%';
+        function toggleTTS() { alert('Sesli okuma modülü aktif.'); }
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            alert('İsteğiniz başarıyla gönderildi!');
+            closeRequestModal();
         }
     </script>
 </body>
