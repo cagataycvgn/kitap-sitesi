@@ -1,0 +1,4 @@
+node_modules/
+uploads/
+books.json
+.env

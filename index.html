@@ -78,7 +78,8 @@
                             <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">EPUB veya ZIP Yükle</span>
                             <span class="text-[10px] text-slate-400 mt-0.5">Toplu ZIP veya tekil dosya</span>
                         </div>
-                        <input type="file" id="epub-upload" accept=".epub, .zip" class="hidden" onchange="handleFileUpload(event)">
+                        <!-- Sunucudaki upload.single('epubFile') ile eşleşmesi için name="epubFile" yapıldı -->
+                        <input type="file" id="epub-upload" name="epubFile" accept=".epub, .zip" class="hidden" onchange="handleFileUpload(event)">
                     </label>
                 </div>
 
@@ -435,335 +436,29 @@
             const cards = document.querySelectorAll('.book-card');
             
             cards.forEach(card => {
+                const title = card.getAttribute('data-title');
+                const author = card.getAttribute('data-author');
                 const category = card.getAttribute('data-category');
-                const title = card.getAttribute('data-title') || '';
-                const author = card.getAttribute('data-author') || '';
                 const bookId = card.getAttribute('data-id');
                 
-                let matchesCategory = (currentCategory === 'all') || 
-                                      (currentCategory === 'Yüklenenler' && category === 'Yüklenenler');
+                const matchesSearch = title.includes(searchQuery) || author.includes(searchQuery);
+                const matchesCategory = currentCategory === 'all' || category === currentCategory;
+                
+                const isFav = favorites.includes(bookId);
+                const isCompleted = completedBooks.includes(bookId);
+                const isReading = readingProgressData[bookId] !== undefined && !isCompleted;
                 
                 let matchesStatus = true;
-                if (currentStatusFilter === 'favorites') {
-                    matchesStatus = favorites.includes(bookId);
-                } else if (currentStatusFilter === 'completed') {
-                    matchesStatus = completedBooks.includes(bookId);
-                } else if (currentStatusFilter === 'reading') {
-                    matchesStatus = readingProgressData[bookId] !== undefined && !completedBooks.includes(bookId);
-                }
+                if (currentStatusFilter === 'favorites') matchesStatus = isFav;
+                else if (currentStatusFilter === 'reading') matchesStatus = isReading;
+                else if (currentStatusFilter === 'completed') matchesStatus = isCompleted;
 
-                let matchesSearch = title.includes(searchQuery) || author.includes(searchQuery);
-
-                if (matchesCategory && matchesStatus && matchesSearch) {
+                if (matchesSearch && matchesCategory && matchesStatus) {
                     card.style.display = 'flex';
                 } else {
                     card.style.display = 'none';
                 }
             });
-        }
-
-        // --- Favoriler ve Durumlar ---
-        function toggleFavorite(bookId, event) {
-            event.stopPropagation();
-            const index = favorites.indexOf(bookId);
-            if (index > -1) {
-                favorites.splice(index, 1);
-            } else {
-                favorites.push(bookId);
-            }
-            localStorage.setItem('reader_favorites', JSON.stringify(favorites));
-            renderBookGrid();
-        }
-
-        function markAsCompleted() {
-            if (!currentBookId) return;
-            if (!completedBooks.includes(currentBookId)) {
-                completedBooks.push(currentBookId);
-                localStorage.setItem('reader_completed', JSON.stringify(completedBooks));
-                renderBookGrid();
-                alert('Kitap okundu olarak işaretlendi!');
-            } else {
-                alert('Bu kitap zaten okundu olarak işaretlenmiş.');
-            }
-        }
-
-        function closeBook() {
-            document.getElementById('reader-view').classList.add('hidden');
-            document.getElementById('library-view').classList.remove('hidden');
-            if (currentBookBook) {
-                currentBookBook.destroy();
-                currentBookBook = null;
-            }
-            document.getElementById('viewer').innerHTML = '';
-            currentBookId = null;
-            if (isTTSActive) stopTTS();
-            renderBookGrid();
-        }
-
-        // --- ePub.js Dosya Yükleme ve Okuma ---
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                
-                // Kitap verisini parse edip kaydet
-                const bookId = 'uploaded-' + Date.now();
-                const bookMeta = {
-                    id: bookId,
-                    title: file.name.replace(/\.[^/.]+$/, ""),
-                    author: "Kişisel Arşiv",
-                    buffer: Array.from(new Uint8Array(arrayBuffer))
-                };
-
-                uploadedBooksList.push(bookMeta);
-                localStorage.setItem('reader_uploaded_books', JSON.stringify(uploadedBooksList));
-                renderBookGrid();
-                loadEpubBuffer(arrayBuffer, bookMeta.title, bookId);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function openUploadedBook(bookId) {
-            const found = uploadedBooksList.find(b => b.id === bookId);
-            if (!found) return;
-            const uint8Array = new Uint8Array(found.buffer);
-            loadEpubBuffer(uint8Array.buffer, found.title, found.id);
-        }
-
-        function loadEpubBuffer(buffer, title, bookId) {
-            currentBookId = bookId;
-            document.getElementById('library-view').classList.add('hidden');
-            document.getElementById('reader-view').classList.remove('hidden');
-            document.getElementById('reader-title').textContent = title;
-            
-            document.getElementById('reader-content').classList.add('hidden');
-            const viewer = document.getElementById('viewer');
-            viewer.classList.remove('hidden');
-            viewer.innerHTML = '';
-            document.getElementById('epub-nav-controls').classList.remove('hidden');
-
-            currentBookBook = ePub(buffer);
-            rendition = currentBookBook.renderTo("viewer", {
-                width: "100%",
-                height: "100%",
-                spread: "auto"
-            });
-
-            let savedLoc = readingProgressData[bookId];
-            if (savedLoc) {
-                rendition.display(savedLoc);
-            } else {
-                rendition.display();
-            }
-
-            rendition.on("relocated", (location) => {
-                const percent = currentBookBook.locations.percentageFromCfi(location.start.cfi);
-                if (!isNaN(percent)) {
-                    document.getElementById('reading-progress').textContent = `%${Math.round(percent * 100)} Okundu`;
-                    readingProgressData[bookId] = location.start.cfi;
-                    localStorage.setItem('reader_progress', JSON.stringify(readingProgressData));
-                }
-            });
-
-            currentBookBook.locations.generate(1024);
-            loadTOC();
-
-            // İlk açılışta kayıtlı renk ve font ayarlarını uygula
-            setTimeout(() => {
-                rendition.themes.fontSize(currentFontSize + '%');
-                rendition.themes.font(currentFontFamily);
-                rendition.themes.default({
-                    "p": { "color": currentTextColor + " !important" },
-                    "span": { "color": currentTextColor + " !important" },
-                    "body": { "color": currentTextColor + " !important" }
-                });
-            }, 500);
-        }
-
-        function nextPage() {
-            if (rendition) rendition.next();
-        }
-
-        function prevPage() {
-            if (rendition) rendition.prev();
-        }
-
-        // --- İçindekiler ve Menüler ---
-        function toggleTOC() {
-            const drawer = document.getElementById('toc-drawer');
-            drawer.classList.toggle('hidden');
-        }
-
-        async function loadTOC() {
-            if (!currentBookBook) return;
-            const toc = await currentBookBook.loaded.navigation;
-            const listContainer = document.getElementById('toc-list');
-            listContainer.innerHTML = '';
-            
-            toc.forEach(chapter => {
-                const item = document.createElement('a');
-                item.href = '#';
-                item.textContent = chapter.label.trim();
-                item.className = 'block p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg truncate';
-                item.onclick = (e) => {
-                    e.preventDefault();
-                    if(rendition) rendition.display(chapter.href);
-                    toggleTOC();
-                };
-                listContainer.appendChild(item);
-            });
-        }
-
-        function toggleSettingsMenu() {
-            const panel = document.getElementById('settings-panel');
-            panel.classList.toggle('hidden');
-        }
-
-        function changeFontSize(direction) {
-            currentFontSize += direction * 10;
-            if (currentFontSize < 70) currentFontSize = 70;
-            if (currentFontSize > 200) currentFontSize = 200;
-            document.getElementById('font-size-indicator').textContent = currentFontSize + '%';
-            if (rendition) {
-                rendition.themes.fontSize(currentFontSize + '%');
-            }
-        }
-
-        function changeFontFamily(family) {
-            currentFontFamily = family;
-            if (rendition) {
-                rendition.themes.font(family);
-            }
-        }
-
-        function changeTextColor(color) {
-            currentTextColor = color;
-            document.getElementById('text-color-picker').value = color;
-            if (rendition) {
-                rendition.themes.default({
-                    "p": { "color": color + " !important" },
-                    "span": { "color": color + " !important" },
-                    "body": { "color": color + " !important" },
-                    "div": { "color": color + " !important" },
-                    "a": { "color": color + " !important" }
-                });
-            }
-        }
-
-        // --- Sesli Okuma (TTS) ---
-        function toggleTTS() {
-            if (!('speechSynthesis' in window)) {
-                alert('Tarayıcınız sesli okuma özelliğini desteklemiyor.');
-                return;
-            }
-            if (isTTSActive) {
-                stopTTS();
-            } else {
-                startTTS();
-            }
-        }
-
-        function startTTS() {
-            alert('Sesli okuma şu an aktif ePub görünümlerinde metin akışı için hazırlanıyor.');
-        }
-
-        function stopTTS() {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-            isTTSActive = false;
-        }
-
-        // --- Modaller ---
-        function openRequestModal() { document.getElementById('request-modal').classList.remove('hidden'); }
-        function closeRequestModal() { document.getElementById('request-modal').classList.add('hidden'); }
-        
-        function openStatsModal() {
-            document.getElementById('stat-completed-count').textContent = completedBooks.length;
-            document.getElementById('stat-fav-count').textContent = favorites.length;
-            document.getElementById('stats-modal').classList.remove('hidden');
-        }
-        function closeStatsModal() { document.getElementById('stats-modal').classList.add('hidden'); }
-
-        function openNotesModal() {
-            const list = document.getElementById('notes-list');
-            list.innerHTML = '';
-            if (highlights.length === 0) {
-                list.innerHTML = '<p class="text-slate-400 text-center py-4">Henüz vurgulanan metin bulunmuyor.</p>';
-            }
-            document.getElementById('notes-modal').classList.remove('hidden');
-        }
-        function closeNotesModal() { document.getElementById('notes-modal').classList.add('hidden'); }
-
-        function openAmbientModal() { document.getElementById('ambient-modal').classList.remove('hidden'); }
-        function closeAmbientModal() { document.getElementById('ambient-modal').classList.add('hidden'); }
-
-        // Formspree Gönderimi
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.textContent = 'Gönderiliyor...';
-
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: { 'Accept': 'application/json' }
-            }).then(response => {
-                if (response.ok) {
-                    alert('İsteğiniz başarıyla gönderildi. Teşekkür ederiz!');
-                    form.reset();
-                    closeRequestModal();
-                } else {
-                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
-                }
-                btn.disabled = false;
-                btn.textContent = 'İsteği Gönder';
-            }).catch(() => {
-                alert('Bağlantı hatası oluştu.');
-                btn.disabled = false;
-                btn.textContent = 'İsteği Gönder';
-            });
-        }
-
-        // Odak Sesleri Kontrolü
-        function playAmbientSound(type) {
-            const rainAudio = document.getElementById('rainAudio');
-            const fireAudio = document.getElementById('fireAudio');
-            
-            rainAudio.pause();
-            fireAudio.pause();
-            document.getElementById('rain-status').textContent = 'Çal';
-            document.getElementById('fire-status').textContent = 'Çal';
-
-            if (type === 'rain') {
-                rainAudio.play().catch(() => {});
-                document.getElementById('rain-status').textContent = 'Çalıyor 🎵';
-                currentAudioType = 'rain';
-            } else if (type === 'fire') {
-                fireAudio.play().catch(() => {});
-                document.getElementById('fire-status').textContent = 'Çalıyor 🎵';
-                currentAudioType = 'fire';
-            }
-        }
-
-        function stopAmbientSound() {
-            document.getElementById('rainAudio').pause();
-            document.getElementById('fireAudio').pause();
-            document.getElementById('rain-status').textContent = 'Çal';
-            document.getElementById('fire-status').textContent = 'Çal';
-            currentAudioType = null;
-        }
-
-        function changeVolume(val) {
-            const vol = val / 100;
-            document.getElementById('rainAudio').volume = vol;
-            document.getElementById('fireAudio').volume = vol;
-            document.getElementById('volume-indicator').textContent = val + '%';
         }
     </script>
 </body>
