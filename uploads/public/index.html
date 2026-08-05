@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortak Web E-Kitap Okuyucu - Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ePub.js Kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.88/epub.min.js"></script>
+    <!-- JSZip Kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        sepia: '#fbf0d9',
+                        sepiaText: '#5f4b32',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body id="body-bg" class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col select-none">
+
+    <!-- Üst Menü (Navbar) -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm px-6 py-3 flex justify-between items-center z-20">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-lg font-black tracking-tight bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent flex items-center gap-2">
+                <span>📚</span> Ortak Kütüphane <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-semibold">Canlı</span>
+            </h1>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="openStatsModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 transition flex items-center gap-1.5"><span>📊</span> İstatistikler</button>
+            <button onclick="openAmbientModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 transition flex items-center gap-1.5"><span>🎧</span> Odak Sesleri</button>
+            <div class="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <button onclick="setTheme('light')" class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">☀️ Açık</button>
+            <button onclick="setTheme('sepia')" class="px-2.5 py-1 text-xs font-medium rounded-md bg-[#fbf0d9] text-[#5f4b32] hover:bg-[#f2e2c4] transition border border-[#ebd7b2]">📖 Sepia</button>
+            <button onclick="setTheme('dark')" class="px-2.5 py-1 text-xs font-medium rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 transition">🌙 Gece</button>
+        </div>
+    </header>
+
+    <!-- Ana İçerik Alanı -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 flex flex-col">
+        
+        <!-- Kitaplık Görünümü -->
+        <section id="library-view" class="flex flex-col md:flex-row gap-8 flex-1">
+            <!-- Sol Menü -->
+            <aside class="w-full md:w-72 space-y-6">
+                <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 text-center space-y-3">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-400">Ortak Arşive Kitap Ekle</h3>
+                    <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-indigo-300 dark:border-indigo-700/60 rounded-xl cursor-pointer bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50 transition group">
+                        <div class="flex flex-col items-center justify-center p-2 text-center">
+                            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📂</span>
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">EPUB Dosyası Yükle</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5">Herkese açık kütüphaneye eklenir</span>
+                        </div>
+                        <input type="file" id="epub-upload" accept=".epub" class="hidden" onchange="handleServerFileUpload(event)">
+                    </label>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 p-3 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
+                        <input type="text" id="search-input" oninput="filterAndSearchBooks()" placeholder="Ortak arşivde ara..." class="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-4">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Filtreler</h3>
+                    <ul class="space-y-1 text-sm font-medium">
+                        <li><button onclick="setStatusFilter('all')" id="status-all" class="w-full text-left px-3 py-1.5 rounded-lg text-indigo-600 font-semibold">Tüm Ortak Kitaplar</button></li>
+                        <li><button onclick="setStatusFilter('favorites')" id="status-favorites" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">⭐ Favorilerim</button></li>
+                        <li><button onclick="setStatusFilter('completed')" id="status-completed" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">✅ Okuduklarım</button></li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Sağ Alan: Kitap Kartları -->
+            <div class="flex-1 space-y-6">
+                <div>
+                    <h2 class="text-2xl font-black tracking-tight">Canlı Ortak Kütüphane</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Bu kütüphanedeki kitaplar sunucuda saklanır ve siteye bağlanan herkes tarafından okunabilir.</p>
+                </div>
+                
+                <div id="book-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </section>
+
+        <!-- Okuyucu Görünümü -->
+        <section id="reader-view" class="hidden flex-1 flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden relative">
+            <div class="bg-slate-50 dark:bg-slate-800/80 px-6 py-3 border-b border-slate-200 dark:border-slate-700/80 flex flex-wrap justify-between items-center gap-3 z-10">
+                <div class="flex items-center space-x-3">
+                    <button onclick="closeBook()" class="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 transition">&larr; Kütüphaneye Dön</button>
+                    <h3 id="reader-title" class="font-bold truncate max-w-xs text-sm">Kitap Adı</h3>
+                </div>
+                <div class="flex items-center flex-wrap gap-2">
+                    <button onclick="toggleTOC()" class="px-2.5 py-1.5 bg-white dark:bg-slate-700 border rounded-lg text-xs font-semibold">📑 Bölümler</button>
+                    <button onclick="toggleSettingsMenu()" class="px-2.5 py-1.5 bg-white dark:bg-slate-700 border rounded-lg text-xs font-semibold">⚙️ Ayarlar</button>
+                    <button onclick="markAsCompleted()" class="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg text-xs font-semibold">✅ Okundu İşaretle</button>
+                </div>
+            </div>
+
+            <!-- Ayarlar Paneli -->
+            <div id="settings-panel" class="hidden absolute top-16 right-6 bg-white dark:bg-slate-800 border rounded-2xl shadow-2xl p-4 z-30 w-72 space-y-4 text-xs">
+                <div class="flex justify-between items-center font-bold pb-2 border-b">
+                    <span>Okuma Ayarları</span>
+                    <button onclick="toggleSettingsMenu()" class="text-slate-400">&times;</button>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-500">Yazı Boyutu</label>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeFontSize(-1)" class="flex-1 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg font-bold">A-</button>
+                        <span id="font-size-indicator" class="font-bold px-2">100%</span>
+                        <button onclick="changeFontSize(1)" class="flex-1 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg font-bold">A+</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-500">Yazı Rengi</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="text-color-picker" value="#1e293b" onchange="changeTextColor(this.value)" class="w-10 h-8 rounded border cursor-pointer bg-transparent">
+                        <div class="flex gap-1 flex-1">
+                            <button onclick="changeTextColor('#1e293b')" class="w-6 h-6 rounded-full bg-slate-800 border"></button>
+                            <button onclick="changeTextColor('#334155')" class="w-6 h-6 rounded-full bg-slate-600 border"></button>
+                            <button onclick="changeTextColor('#4338ca')" class="w-6 h-6 rounded-full bg-indigo-700 border"></button>
+                            <button onclick="changeTextColor('#5f4b32')" class="w-6 h-6 rounded-full bg-[#5f4b32] border"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İçindekiler Drawer -->
+            <div id="toc-drawer" class="hidden absolute left-0 top-14 bottom-0 w-80 bg-white dark:bg-slate-900 border-r shadow-2xl z-30 flex flex-col">
+                <div class="p-4 border-b flex justify-between items-center font-bold">
+                    <span>📑 İçindekiler</span>
+                    <button onclick="toggleTOC()" class="text-slate-400">&times;</button>
+                </div>
+                <div id="toc-list" class="flex-1 overflow-y-auto p-4 space-y-1 text-xs"></div>
+            </div>
+
+            <div id="viewer" class="flex-1 w-full h-full bg-white dark:bg-slate-900 relative"></div>
+
+            <div id="epub-nav-controls" class="hidden bg-slate-50 dark:bg-slate-800/80 px-6 py-3 border-t flex justify-between items-center z-10">
+                <button onclick="prevPage()" class="px-4 py-1.5 bg-white dark:bg-slate-700 border rounded-xl text-xs font-bold">&larr; Önceki</button>
+                <span id="reading-progress" class="text-xs font-semibold text-slate-400">Yükleniyor...</span>
+                <button onclick="nextPage()" class="px-4 py-1.5 bg-white dark:bg-slate-700 border rounded-xl text-xs font-bold">Sonraki &rarr;</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modaller -->
+    <div id="stats-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 class="font-bold">📊 İstatistikler</h3><button onclick="closeStatsModal()" class="text-xl">&times;</button></div>
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="bg-indigo-50 p-4 rounded-2xl"><span id="stat-completed-count" class="text-2xl font-black text-indigo-600">0</span><p class="text-xs text-slate-500">Okunan</p></div>
+                <div class="bg-amber-50 p-4 rounded-2xl"><span id="stat-fav-count" class="text-2xl font-black text-amber-600">0</span><p class="text-xs text-slate-500">Favori</p></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ambient-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center"><h3 class="font-bold">🎧 Odak Sesleri</h3><button onclick="closeAmbientModal()" class="text-xl">&times;</button></div>
+            <button onclick="playAmbientSound('rain')" class="w-full p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">🌧️ Yağmur Sesi <span id="rain-status">(Durduruldu)</span></button>
+            <button onclick="stopAmbientSound()" class="w-full py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold">Sesleri Durdur</button>
+        </div>
+    </div>
+
+    <audio id="rainAudio" loop><source src="sounds/rain.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        let currentTheme = localStorage.getItem('reader_theme') || 'auto';
+        let currentStatusFilter = 'all';
+        let favorites = JSON.parse(localStorage.getItem('reader_favorites') || '[]');
+        let completedBooks = JSON.parse(localStorage.getItem('reader_completed') || '[]');
+        let serverBooks = [];
+        let currentBookId = null;
+        let currentBookBook = null;
+        let rendition = null;
+        let currentFontSize = 100;
+        let currentTextColor = '#1e293b';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTheme(currentTheme);
+            fetchServerBooks();
+        });
+
+        // Sunucudan kitap listesini çek
+        async function fetchServerBooks() {
+            try {
+                const res = await fetch('/api/books');
+                serverBooks = await res.json();
+                renderBookGrid();
+            } catch (err) {
+                console.error("Kitaplar yüklenirken hata oluştu:", err);
+            }
+        }
+
+        function renderBookGrid() {
+            const grid = document.getElementById('book-grid');
+            grid.innerHTML = '';
+
+            if (serverBooks.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
+                        <span class="text-4xl">📚</span>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm">Ortak arşivde henüz kitap yok</h3>
+                        <p class="text-xs text-slate-400">Sol taraftan ilk ePub dosyasını yükleyerek arşivi başlat!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            serverBooks.forEach(book => {
+                const isFav = favorites.includes(book.id);
+                const isCompleted = completedBooks.includes(book.id);
+
+                const card = document.createElement('div');
+                card.className = 'book-card bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm hover:shadow-md transition cursor-pointer border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between group';
+                
+                card.innerHTML = `
+                    <div onclick="openServerBook('${book.filename}', '${book.title}', '${book.id}')">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="text-xs font-bold px-2.5 py-1 bg-indigo-100 text-indigo-800 rounded-full">Ortak Arşiv</span>
+                            <button onclick="toggleFavorite('${book.id}', event)" class="text-lg">${isFav ? '⭐' : '🤍'}</button>
+                        </div>
+                        <div class="h-36 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950/30 flex items-center justify-center mb-4 text-4xl shadow-inner">📖</div>
+                        <h3 class="text-base font-bold line-clamp-1">${book.title}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">${book.author}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t flex justify-between items-center text-xs">
+                        <span class="font-semibold ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}">${isCompleted ? '✅ Okundu' : '📖 Okunabilir'}</span>
+                        <span class="text-indigo-600 font-bold group-hover:translate-x-1 transition-transform">Oku &rarr;</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            filterAndSearchBooks();
+        }
+
+        // Sunucuya dosya yükleme isteği at
+        async function handleServerFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('epubFile', file);
+
+            try {
+                const res = await fetch('/api/books', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    alert('Kitap ortak arşive başarıyla yüklendi!');
+                    fetchServerBooks();
+                } else {
+                    alert('Yükleme başarısız oldu.');
+                }
+            } catch (err) {
+                alert('Sunucu bağlantı hatası.');
+            }
+        }
+
+        function openServerBook(filename, title, bookId) {
+            currentBookId = bookId;
+            document.getElementById('library-view').classList.add('hidden');
+            document.getElementById('reader-view').classList.remove('hidden');
+            document.getElementById('reader-title').textContent = title;
+            document.getElementById('epub-nav-controls').classList.remove('hidden');
+
+            const fileUrl = `/uploads/${filename}`;
+            currentBookBook = ePub(fileUrl);
+            rendition = currentBookBook.renderTo("viewer", { width: "100%", height: "100%", spread: "auto" });
+            rendition.display();
+
+            currentBookBook.locations.generate(1024);
+            loadTOC();
+        }
+
+        function closeBook() {
+            document.getElementById('reader-view').classList.add('hidden');
+            document.getElementById('library-view').classList.remove('hidden');
+            if (currentBookBook) {
+                currentBookBook.destroy();
+                currentBookBook = null;
+            }
+            document.getElementById('viewer').innerHTML = '';
+            currentBookId = null;
+            renderBookGrid();
+        }
+
+        async function loadTOC() {
+            if (!currentBookBook) return;
+            const toc = await currentBookBook.loaded.navigation;
+            const listContainer = document.getElementById('toc-list');
+            listContainer.innerHTML = '';
+            toc.forEach(chapter => {
+                const item = document.createElement('a');
+                item.href = '#';
+                item.textContent = chapter.label.trim();
+                item.className = 'block p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg truncate text-xs';
+                item.onclick = (e) => { e.preventDefault(); rendition.display(chapter.href); toggleTOC(); };
+                listContainer.appendChild(item);
+            });
+        }
+
+        function nextPage() { if (rendition) rendition.next(); }
+        function prevPage() { if (rendition) rendition.prev(); }
+        function toggleTOC() { document.getElementById('toc-drawer').classList.toggle('hidden'); }
+        function toggleSettingsMenu() { document.getElementById('settings-panel').classList.toggle('hidden'); }
+
+        function toggleFavorite(bookId, event) {
+            event.stopPropagation();
+            const idx = favorites.indexOf(bookId);
+            if (idx > -1) favorites.splice(idx, 1);
+            else favorites.push(bookId);
+            localStorage.setItem('reader_favorites', JSON.stringify(favorites));
+            renderBookGrid();
+        }
+
+        function markAsCompleted() {
+            if (!currentBookId) return;
+            if (!completedBooks.includes(currentBookId)) {
+                completedBooks.push(currentBookId);
+                localStorage.setItem('reader_completed', JSON.stringify(completedBooks));
+                alert('Kitap okundu olarak işaretlendi!');
+                renderBookGrid();
+            }
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('reader_theme', theme);
+            const body = document.getElementById('body-bg');
+            body.classList.remove('dark');
+            if (theme === 'dark') body.classList.add('dark');
+            else if (theme === 'sepia') { body.style.backgroundColor = '#fbf0d9'; body.style.color = '#5f4b32'; }
+            else { body.style.backgroundColor = ''; body.style.color = ''; }
+        }
+
+        function filterAndSearchBooks() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            document.querySelectorAll('.book-card').forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                card.style.display = title.includes(query) ? 'flex' : 'none';
+            });
+        }
+
+        function openStatsModal() {
+            document.getElementById('stat-completed-count').textContent = completedBooks.length;
+            document.getElementById('stat-fav-count').textContent = favorites.length;
+            document.getElementById('stats-modal').classList.remove('hidden');
+        }
+        function closeStatsModal() { document.getElementById('stats-modal').classList.add('hidden'); }
+        function openAmbientModal() { document.getElementById('ambient-modal').classList.remove('hidden'); }
+        function closeAmbientModal() { document.getElementById('ambient-modal').classList.add('hidden'); }
+        function playAmbientSound(type) { document.getElementById('rainAudio').play().catch(()=>{}); document.getElementById('rain-status').textContent = '(Çalıyor 🎵)'; }
+        function stopAmbientSound() { document.getElementById('rainAudio').pause(); document.getElementById('rain-status').textContent = '(Durduruldu)'; }
+    </script>
+</body>
+</html>
