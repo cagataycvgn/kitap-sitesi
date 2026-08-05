@@ -270,11 +270,11 @@
         let book = null;
         let rendition = null;
 
-        // BURAYA KİSLERİN GİRDİĞİ AN GÖREBİLECEĞİ ORTAK KİTAPLARI EKLEYEBİLİRSİN
+        // Ortak kitaplar (ornek.pdf ana dizine taşındığı için yolu güncellendi)
         let defaultBooks = [
             {
                 name: "Örnek Kitap.pdf",
-                url: "kitaplar/ornek.pdf", // Dosyayı koyduğun klasör ve isim
+                url: "ornek.pdf",
                 type: "pdf"
             }
         ];
@@ -306,12 +306,10 @@
             viewerEl.innerHTML = '<div style="text-align:center; padding:20px;">Yükleniyor...</div>';
 
             if (bookObj.url) {
-                // Sunucudaki (eklediğin) dosya
                 if (bookObj.type === 'pdf') {
                     loadPdf(bookObj.url);
                 }
             } else if (bookObj.data) {
-                // Kullanıcının kendi yüklediği dosya
                 if (bookObj.type === 'pdf') {
                     loadPdf(bookObj.data);
                 } else {
